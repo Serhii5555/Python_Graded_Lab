@@ -48,7 +48,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _load_json(path: str):
-    with open(path, encoding="utf-8") as handle:
+    with open(path, encoding="utf-8-sig") as handle:
         return json.load(handle)
 
 
@@ -69,10 +69,12 @@ def _print_error(message: str) -> None:
 def _log_errors(log_path: str, errors: list[str]) -> None:
     """Write every error message to errors.log.
 
-    The handler is always removed and closed, even if logging raises,
-    so that a later run in the same process starts from a clean logger.
+    One WARNING line per invalid row and nothing else. The handler is always
+    removed and closed, even if logging raises, so that a later run in the
+    same process starts from a clean logger.
     """
     logger.setLevel(logging.INFO)
+    logger.propagate = False  # never echo the rows to a root console handler
     handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
     handler.setFormatter(logging.Formatter(
         "%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
@@ -80,7 +82,6 @@ def _log_errors(log_path: str, errors: list[str]) -> None:
     try:
         for message in errors:
             logger.warning(message)
-        logger.info("%d invalid row(s)", len(errors))
     finally:
         logger.removeHandler(handler)
         handler.close()
@@ -117,7 +118,8 @@ def main(argv: list[str] | None = None) -> int:
                 if not os.path.isdir(args.input_dir):
                     raise LabError(f"folder does not exist: {args.input_dir}")
                 names = sorted(n for n in os.listdir(args.input_dir)
-                               if n.endswith(".csv"))
+                               if n.endswith(".csv")
+                               and os.path.isfile(os.path.join(args.input_dir, n)))
                 if not names:
                     raise LabError(f"no .csv files found in {args.input_dir}")
                 paths = [os.path.join(args.input_dir, n) for n in names]
@@ -166,6 +168,9 @@ def main(argv: list[str] | None = None) -> int:
         return exc.code if isinstance(exc.code, int) else 2
     except json.JSONDecodeError as exc:
         _print_error(f"not valid JSON: {exc}")
+        return 1
+    except UnicodeDecodeError as exc:
+        _print_error(f"file is not valid UTF-8: {exc}")
         return 1
     except LabError as exc:
         _print_error(str(exc))

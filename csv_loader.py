@@ -23,8 +23,7 @@ def parse_files(paths: list[str], airports: set[str]) -> tuple[list[dict], list[
 
     for path in paths:
         file_name = os.path.basename(path)
-        # Text mode with universal newlines handles both \n and \r\n endings.
-        with open(path, encoding="utf-8") as handle:
+        with open(path, encoding="utf-8-sig") as handle:
             for line_no, raw_line in enumerate(handle, start=1):
                 if line_no == 1:
                     continue  # header: always skipped, never validated

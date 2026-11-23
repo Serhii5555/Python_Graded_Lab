@@ -5,7 +5,9 @@ from datetime import datetime
 
 FLIGHT_ID_RE = re.compile(r"[A-Za-z0-9]{2,8}")
 AIRPORT_RE = re.compile(r"[A-Z]{3}")
-DATETIME_RE = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}")
+# [0-9], not \d: \d also matches non-ASCII decimal digits, which strptime()
+# happily converts, so "２０２５-11-14 10:30" would pass as a real datetime.
+DATETIME_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}")
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 
 
@@ -16,7 +18,7 @@ def load_airports(path: str) -> set[str]:
     starting with '#'.
     """
     codes: set[str] = set()
-    with open(path, encoding="utf-8") as handle:
+    with open(path, encoding="utf-8-sig") as handle:
         for line in handle:
             code = line.strip()
             if not code or code.startswith("#"):
